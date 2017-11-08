@@ -33,7 +33,6 @@ class MainActivity : AppCompatActivity() {
     private var audioIndex = 0
     private var repeat = 0
     private var current = 0
-    private var path = ""
     private val utils = Utilities()
     private val mp = MediaPlayer()
     private val mHandler = Handler()
@@ -55,6 +54,21 @@ class MainActivity : AppCompatActivity() {
             // Running this thread after 100 milliseconds
             mHandler.postDelayed(this, 100)
         }
+    }
+
+    private fun path(): String {
+        val text: String
+        try {
+            val fis = FileInputStream(filesDir.toString() + "/last_path.txt")
+            val r = BufferedReader(InputStreamReader(fis))
+            text = r.readLine()
+            r.close()
+            fis.close()
+            return text
+        } catch (e: IOException) {
+            e.printStackTrace()
+        }
+        return ""
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -147,40 +161,21 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        try {
-            val fis = FileInputStream(filesDir.toString() + "/last_path.txt")
-            val r = BufferedReader(InputStreamReader(fis))
-            path = r.readLine()
-            r.close()
-            fis.close()
-        } catch (e: IOException) {
-            e.printStackTrace()
-        }
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
                 requestPermissions(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE),
                         1)
             } else {
-                if (path.isEmpty())
-                    scanFiles(Environment.getExternalStorageDirectory())
-                else
-                    scanFiles(File(path))
+                scanFiles(path())
             }
         } else {
-            if (path.isEmpty())
-                scanFiles(Environment.getExternalStorageDirectory())
-            else
-                scanFiles(File(path))
+            scanFiles(path())
         }
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
         if (requestCode == 1 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            if (path.isEmpty())
-                scanFiles(Environment.getExternalStorageDirectory())
-            else
-                scanFiles(File(path))
+            scanFiles(path())
         } else if (requestCode == 1 && grantResults[0] == PackageManager.PERMISSION_DENIED) {
             val toast = Toast.makeText(applicationContext,
                     "You need to grant storage access in order to view files", Toast.LENGTH_LONG)
@@ -188,23 +183,25 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun scanFiles(root: File) {
-        textPath.text = root.toString()
+    private fun scanFiles(rootPath: String) {
+        val file: File
+        if (rootPath.isEmpty()) file = Environment.getExternalStorageDirectory() else file = File(rootPath)
+        textPath.text = file.absolutePath
         fileMan.removeAllViews()
-        list = root.listFiles()
+        list = file.listFiles()
         Arrays.sort(list)
         for (f in list) {
             if (f.isDirectory) {
-                val folder = inflater.inflate(R.layout.layout_folder, null)
-                folder.setOnClickListener { scanFiles(File(f.absolutePath)) }
+                val folderView = inflater.inflate(R.layout.layout_folder, null)
+                folderView.setOnClickListener { scanFiles(f.absolutePath) }
 
-                val text = folder.findViewById<TextView>(R.id.textView)
+                val text = folderView.findViewById<TextView>(R.id.textView)
                 text.text = f.absolutePath.substring(f.absolutePath.lastIndexOf('/') + 1)
 
-                fileMan.addView(folder)
+                fileMan.addView(folderView)
             } else if (f.absolutePath.contains(".mp3")) {
-                val file = inflater.inflate(R.layout.layout_file, null)
-                file.setOnClickListener(View.OnClickListener {
+                val fileView = inflater.inflate(R.layout.layout_file, null)
+                fileView.setOnClickListener(View.OnClickListener {
                     val path = f.absolutePath.substring(0, f.absolutePath.lastIndexOf('/'))
                     list = File(path).listFiles()
                     Arrays.sort(list)
@@ -228,10 +225,10 @@ class MainActivity : AppCompatActivity() {
                         e.printStackTrace()
                     }
                 })
-                val text = file.findViewById<TextView>(R.id.textView)
+                val text = fileView.findViewById<TextView>(R.id.textView)
                 val str = f.absolutePath
                 text.text = str.substring(str.lastIndexOf('/') + 1)
-                fileMan.addView(file)
+                fileMan.addView(fileView)
             }
         }
         if (list.isEmpty()) {
@@ -273,7 +270,7 @@ class MainActivity : AppCompatActivity() {
     override fun onBackPressed() {
         if (textPath.text.toString() != Environment.getExternalStorageDirectory().toString()) {
             val str = textPath.text.toString()
-            scanFiles(File(str.substring(0, str.lastIndexOf('/'))))
+            scanFiles(str.substring(0, str.lastIndexOf('/')))
         } else {
             mHandler.removeCallbacks(mUpdateTimeTask)
             mp.release()
