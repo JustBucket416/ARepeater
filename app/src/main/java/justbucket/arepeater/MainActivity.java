@@ -46,6 +46,7 @@ public class MainActivity extends AppCompatActivity {
     private Handler mHandler = new Handler();
     private File[] list;
     private int audioIndex, repeat, current = 0;
+
     private Runnable mUpdateTimeTask = new Runnable() {
         public void run() {
             long totalDuration = mp.getDuration();
