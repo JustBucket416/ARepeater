@@ -1,6 +1,7 @@
 package justbucket.arepeater;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.media.MediaPlayer;
@@ -38,7 +39,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView textPath, textCurrTrack, textCurrentDuration, textTotalDuration;
     private LinearLayout fileMan;
     private LayoutInflater inflater;
-    private UtilitiesKt utils;
+    private Utilities utils;
     private ImageButton play;
     private NumberPicker numberPicker;
     private SeekBar seekBar;
@@ -67,11 +68,10 @@ public class MainActivity extends AppCompatActivity {
     };
 
     private String path() {
-        final String text;
         try {
             FileInputStream fis = new FileInputStream(getFilesDir() + "/last_path.txt");
             BufferedReader r = new BufferedReader(new InputStreamReader(fis));
-            text = r.readLine();
+            final String text = r.readLine();
             r.close();
             fis.close();
             return text;
@@ -100,7 +100,7 @@ public class MainActivity extends AppCompatActivity {
         numberPicker = findViewById(R.id.number_picker);
         seekBar = findViewById(R.id.seekBar);
         mp = new MediaPlayer();
-        utils = new UtilitiesKt();
+        utils = new Utilities();
 
         play.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -218,7 +218,8 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void scanFiles(String rootPath) {
+    @SuppressLint("InflateParams")
+    private void scanFiles(String rootPath) { //implementing a simple file manager which chows only .mp3 files
         File file;
         if (rootPath.isEmpty()) file = Environment.getExternalStorageDirectory();
         else file = new File(rootPath);
@@ -226,7 +227,7 @@ public class MainActivity extends AppCompatActivity {
         fileMan.removeAllViews();
         list = file.listFiles();
         Arrays.sort(list);
-        for (final File f : list) {
+        for (final File f : list) { 
             if (f.isDirectory()) {
                 View folderView = inflater.inflate(R.layout.layout_folder, null);
                 folderView.setOnClickListener(new View.OnClickListener() {
