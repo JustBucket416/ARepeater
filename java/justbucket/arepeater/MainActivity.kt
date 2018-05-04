@@ -78,6 +78,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         imageButtonNext.setOnClickListener {
+            checkBox.isChecked = false
             current = 1
             if (audioIndex < songList.size - 1) {
                 ++audioIndex
@@ -89,8 +90,9 @@ class MainActivity : AppCompatActivity() {
         }
 
         imageButtonPrev.setOnClickListener {
-            current = 1
             if (audioIndex != 0) {
+                current = 1
+                checkBox.isChecked = false
                 --audioIndex
                 playSong(songList[audioIndex])
             }
@@ -115,6 +117,9 @@ class MainActivity : AppCompatActivity() {
                     // forward or backward to certain seconds
                     mp.seekTo(currentPosition)
 
+                    //if in repeat mode, set the new time as the start time
+                    if (checkBox.isChecked) startTime = currentPosition
+
                     // update timer progress again
                     updateProgressBar()
                 }
@@ -129,16 +134,18 @@ class MainActivity : AppCompatActivity() {
                 current++
             } else {
                 current = 1
-                if (++audioIndex <= songList.size - 1) {
-                    playSong(songList[audioIndex])
+                audioIndex = if (audioIndex + 1 < songList.size) audioIndex + 1 else 0
+                /*if (++audioIndex <= songList.size - 1) {
+                    playSong(songList[++audioIndex])
                 } else {
                     audioIndex = 0
                     playSong(songList[audioIndex])
-                }
+                }*/
+                playSong(songList[audioIndex])
             }
         }
 
-        checkBox.setOnCheckedChangeListener { compoundButton, checked ->
+        checkBox.setOnCheckedChangeListener { _, checked ->
             if (checked) {
                 startTime = mp.currentPosition
                 mHandler.postDelayed(repeatTask, numberPicker.value.toLong() * 1000)
@@ -172,7 +179,6 @@ class MainActivity : AppCompatActivity() {
         this.root = root
         textPath.text = root.absolutePath
         list = ArrayList(root.listFiles().filter { (it.name[0] != '.') && (it.isDirectory || it.extension == "mp3") }.sorted().toList())
-        //songList = ArrayList(list.filter { it.extension == "mp3" })
         fileMan.adapter = FileListAdapter(this, ::onItemClick, list)
     }
 
@@ -181,8 +187,10 @@ class MainActivity : AppCompatActivity() {
             scanFiles(file)
         } else {
             playerLay.visibility = View.VISIBLE
-            playSong(file)
+            current = 1
             songList = ArrayList(list.filter { it.isFile })
+            audioIndex = songList.indexOf(file)
+            playSong(file)
             sharedPreferences.edit().putString("root", file.parentFile.absolutePath).apply()
         }
     }
@@ -193,12 +201,9 @@ class MainActivity : AppCompatActivity() {
         mp.prepare()
         mp.start()
 
-        current = 1
-        //val str = list[audioIndex].absolutePath
         textViewTrack.text = file.nameWithoutExtension
 
-        /*seekBar.progress = 0
-        seekBar.max = 100*/
+        imageButtonPP.setImageResource(R.drawable.pause)
 
         updateProgressBar()
     }
