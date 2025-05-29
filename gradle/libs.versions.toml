@@ -1,0 +1,14 @@
+[versions]
+agp = "8.7.1"
+appcompat = "1.7.0"
+kotlin = "2.0.0"
+numberPicker = "2.4.13"
+
+[libraries]
+appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
+number-picker = { module = "io.github.ShawnLin013:number-picker", version.ref = "numberPicker" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+

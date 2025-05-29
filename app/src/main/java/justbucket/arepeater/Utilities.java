@@ -44,16 +44,14 @@ public class Utilities {
      * @param totalDuration   - total duration of the song
      */
     int getProgressPercentage(long currentDuration, long totalDuration) {
-        Double percentage;
-
         long currentSeconds = (int) (currentDuration / 1000);
         long totalSeconds = (int) (totalDuration / 1000);
 
         // calculating percentage
-        percentage = (((double) currentSeconds) / totalSeconds) * 100;
+        double percentage = (((double) currentSeconds) / totalSeconds) * 100;
 
         // return percentage
-        return percentage.intValue();
+        return (int) percentage;
     }
 
     /**

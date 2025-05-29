@@ -9,9 +9,8 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
-import android.support.annotation.NonNull;
-import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
+import android.os.PowerManager;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -20,6 +19,10 @@ import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 
 import com.shawnlin.numberpicker.NumberPicker;
 
@@ -44,11 +47,14 @@ public class MainActivity extends AppCompatActivity {
     private NumberPicker numberPicker;
     private SeekBar seekBar;
     private MediaPlayer mp;
-    private Handler mHandler = new Handler();
+    private final Handler mHandler = new Handler();
     private File[] list;
     private int audioIndex, repeat, current = 0;
 
-    private Runnable mUpdateTimeTask = new Runnable() {
+    private PowerManager mPowerManager;
+    private PowerManager.WakeLock mWakeLock;
+
+    private final Runnable mUpdateTimeTask = new Runnable() {
         public void run() {
             long totalDuration = mp.getDuration();
             long currentDuration = mp.getCurrentPosition();
@@ -102,47 +108,43 @@ public class MainActivity extends AppCompatActivity {
         mp = new MediaPlayer();
         utils = new Utilities();
 
-        play.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if (mp.isPlaying()) {
-                    if (mp != null) {
-                        mp.pause();
-                        play.setImageResource(R.drawable.play);
-                    }
-                } else {
-                    // Resume song
-                    if (mp != null) {
-                        mp.start();
-                        // Changing button image to pause button
-                        play.setImageResource(R.drawable.pause);
-                    }
+        mPowerManager = ((PowerManager) getSystemService(Context.POWER_SERVICE));
+        mWakeLock = mPowerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "ARepeater:WakeLock");
+
+        play.setOnClickListener(view -> {
+            if (mp.isPlaying()) {
+                if (mp != null) {
+                    mp.pause();
+                    mWakeLock.release();
+                    play.setImageResource(R.drawable.play);
+                }
+            } else {
+                // Resume song
+                if (mp != null) {
+                    mp.start();
+                    mWakeLock.acquire();
+                    // Changing button image to pause button
+                    play.setImageResource(R.drawable.pause);
                 }
             }
         });
 
-        next.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                current = 0;
-                if (audioIndex < list.length - 1) {
-                    ++audioIndex;
-                    playSong();
-                } else {
-                    audioIndex = 0;
-                    playSong();
-                }
+        next.setOnClickListener(view -> {
+            current = 0;
+            if (audioIndex < list.length - 1) {
+                ++audioIndex;
+                playSong();
+            } else {
+                audioIndex = 0;
+                playSong();
             }
         });
 
-        previous.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                current = 0;
-                if (audioIndex != 0) {
-                    --audioIndex;
-                    playSong();
-                }
+        previous.setOnClickListener(view -> {
+            current = 0;
+            if (audioIndex != 0) {
+                --audioIndex;
+                playSong();
             }
         });
 
@@ -209,6 +211,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if ((requestCode == 1 && (grantResults[0] == PackageManager.PERMISSION_GRANTED))) {
             scanFiles(path());
         } else if ((requestCode == 1 && (grantResults[0] == PackageManager.PERMISSION_DENIED))) {
@@ -221,21 +224,19 @@ public class MainActivity extends AppCompatActivity {
     @SuppressLint("InflateParams")
     private void scanFiles(String rootPath) { //implementing a simple file manager which chows only .mp3 files
         File file;
-        if (rootPath.isEmpty()) file = Environment.getExternalStorageDirectory();
-        else file = new File(rootPath);
+        if (rootPath.isEmpty()) {
+            file = Environment.getExternalStorageDirectory();
+        } else {
+            file = new File(rootPath);
+        }
         textPath.setText(file.getAbsolutePath());
         fileMan.removeAllViews();
         list = file.listFiles();
         Arrays.sort(list);
-        for (final File f : list) { 
+        for (final File f : list) {
             if (f.isDirectory()) {
                 View folderView = inflater.inflate(R.layout.layout_folder, null);
-                folderView.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View view) {
-                        scanFiles(f.getAbsolutePath());
-                    }
-                });
+                folderView.setOnClickListener(view -> scanFiles(f.getAbsolutePath()));
 
                 TextView text = folderView.findViewById(R.id.textView);
                 text.setText(f.getAbsolutePath().substring(f.getAbsolutePath().lastIndexOf('/') + 1));
@@ -243,31 +244,30 @@ public class MainActivity extends AppCompatActivity {
                 fileMan.addView(folderView);
             } else if ((f.getAbsolutePath().contains(".mp3"))) {
                 View fileView = inflater.inflate(R.layout.layout_file, null);
-                fileView.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View view) {
-                        String path = f.getAbsolutePath().substring(0, f.getAbsolutePath().lastIndexOf('/'));
-                        list = new File(path).listFiles();
-                        Arrays.sort(list);
-                        for (int i = 0; i < list.length; i++) {
-                            if (f.equals(list[i])) {
-                                current = 0;
-                                play.setImageResource(R.drawable.pause);
-                                seekBar.setClickable(true);
-                                audioIndex = i;
-                                playSong();
-                                break;
-                            }
+                fileView.setOnClickListener(view -> {
+                    String path = f.getAbsolutePath().substring(0, f.getAbsolutePath().lastIndexOf('/'));
+                    list = new File(path).listFiles();
+                    Arrays.sort(list);
+                    for (int i = 0; i < list.length; i++) {
+                        if (f.equals(list[i])) {
+                            current = 0;
+                            play.setImageResource(R.drawable.pause);
+                            seekBar.setClickable(true);
+                            audioIndex = i;
+                            playSong();
+                            break;
                         }
-                        try {
-                            File last = new File(getFilesDir(), "last_path.txt");
-                            if (!last.createNewFile()) return;
-                            FileOutputStream fos = openFileOutput("last_path.txt", Context.MODE_PRIVATE);
-                            fos.write(path.getBytes());
-                            fos.close();
-                        } catch (IOException e) {
-                            e.printStackTrace();
+                    }
+                    try {
+                        File last = new File(getFilesDir(), "last_path.txt");
+                        if (!last.createNewFile()) {
+                            return;
                         }
+                        FileOutputStream fos = openFileOutput("last_path.txt", Context.MODE_PRIVATE);
+                        fos.write(path.getBytes());
+                        fos.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
                     }
                 });
                 TextView text = fileView.findViewById(R.id.textView);
@@ -299,7 +299,7 @@ public class MainActivity extends AppCompatActivity {
 
             updateProgressBar();
         } catch (IllegalArgumentException | IOException | IllegalStateException e) {
-            e.printStackTrace();
+            Log.e("ARepeater", e.getLocalizedMessage(), e);
         }
     }
 
@@ -317,5 +317,11 @@ public class MainActivity extends AppCompatActivity {
             mp.release();
             super.onBackPressed();
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        mWakeLock.release();
     }
 }
