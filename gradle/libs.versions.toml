@@ -1,12 +1,16 @@
 [versions]
 agp = "8.7.1"
 appcompat = "1.7.0"
+constraintlayout = "2.2.1"
 kotlin = "2.0.0"
 numberPicker = "2.4.13"
+recyclerview = "1.4.0"
 
 [libraries]
 appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
+constraintlayout = { module = "androidx.constraintlayout:constraintlayout", version.ref = "constraintlayout" }
 number-picker = { module = "io.github.ShawnLin013:number-picker", version.ref = "numberPicker" }
+recyclerview = { module = "androidx.recyclerview:recyclerview", version.ref = "recyclerview" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
